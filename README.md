@@ -50,7 +50,7 @@ const RATES = {
 ## 🛠️ 技术栈
 
 - **前端**: React 18 + TypeScript + Vite + TailwindCSS
-- **后端**: Node.js + Express + SQLite
+- **后端**: Node.js + Express
 - **实时**: WebSocket 实时扣费
 
 ## 🚦 快速开始
