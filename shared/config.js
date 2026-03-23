@@ -208,3 +208,24 @@ export function getSarcasmComment(contentType) {
 
 export const DEFAULT_BALANCE = 100
 export const DAILY_LIMIT = 100
+
+export const MOCK_LEADERBOARD = [
+  { id: '1', name: '💰 土豪王', totalSpent: 1580.5, totalMessages: 520, lastActive: '今天' },
+  { id: '2', name: '📚 深度哥', totalSpent: 890.2, totalMessages: 180, lastActive: '今天' },
+  { id: '3', name: '💬 话痨王', totalSpent: 650.8, totalMessages: 890, lastActive: '昨天' },
+  { id: '4', name: '❤️ 情感天使', totalSpent: 420.3, totalMessages: 95, lastActive: '今天' },
+  { id: '5', name: '🗯️ 废话达人', totalSpent: 180.5, totalMessages: 450, lastActive: '昨天' },
+]
+
+export const TASKS = [
+  { id: 'watch_ad', name: '观看广告', description: '看30秒广告', icon: '📺', reward: 5, type: 'daily', completed: false },
+  { id: 'invite', name: '邀请好友', description: '邀请1位新用户', icon: '👥', reward: 20, type: 'one-time', completed: false },
+  { id: 'share', name: '分享战绩', description: '分享到社交媒体', icon: '📤', reward: 3, type: 'daily', completed: false },
+  { id: 'check_in', name: '每日签到', description: '签到领奖励', icon: '📅', reward: 1, type: 'daily', completed: false },
+]
+
+export const SUBSCRIPTIONS = [
+  { tier: 'free', name: '免费版', price: 0, features: ['每日100元额度', '基础角色', '基本统计'] },
+  { tier: 'pro', name: 'Pro会员', price: 19, features: ['每日500元额度', '所有角色', '高级统计', '无广告', '专属成就'] },
+  { tier: 'vip', name: 'VIP会员', price: 49, features: ['无限额度', '自定义费率', '专属客服', '优先体验新功能', '线下活动资格'] },
+]

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { detectContentType, RATE_CONFIG, DEFAULT_BALANCE, DAILY_LIMIT, DEFAULT_ROLE_MULTIPLIERS, DEFAULT_ROLE_LABELS, DAILY_CHALLENGES, ACHIEVEMENTS, getSarcasmComment, type ContentType } from '@shared/config'
+import { detectContentType, RATE_CONFIG, DEFAULT_BALANCE, DAILY_LIMIT, DEFAULT_ROLE_MULTIPLIERS, DEFAULT_ROLE_LABELS, DAILY_CHALLENGES, ACHIEVEMENTS, getSarcasmComment, type ContentType, MOCK_LEADERBOARD, TASKS, SUBSCRIPTIONS } from '@shared/config'
 
 interface Message {
   id: number
@@ -33,6 +33,9 @@ const STORAGE_KEY = {
   achievements: 'humantoken_achievements',
   dailyChallenges: 'humantoken_daily_challenges',
   dailyStats: 'humantoken_daily_stats',
+  tasks: 'humantoken_tasks',
+  subscription: 'humantoken_subscription',
+  userName: 'humantoken_username',
 }
 
 function loadFromStorage<T>(key: string, defaultValue: T): T {
@@ -81,6 +84,12 @@ function App() {
   const [showAchievements, setShowAchievements] = useState(false)
   const [showChallenges, setShowChallenges] = useState(false)
   const [darkMode, setDarkMode] = useState(() => loadFromStorage('humantoken_darkmode', false))
+  const [showLeaderboard, setShowLeaderboard] = useState(false)
+  const [showTasks, setShowTasks] = useState(false)
+  const [showSubscription, setShowSubscription] = useState(false)
+  const [completedTasks, setCompletedTasks] = useState<string[]>(() => loadFromStorage(STORAGE_KEY.tasks, []))
+  const [subscription, setSubscription] = useState<string>(() => loadFromStorage(STORAGE_KEY.subscription, 'free'))
+  const [userName, setUserName] = useState(() => loadFromStorage(STORAGE_KEY.userName, '匿名用户'))
 
   const [unlockedAchievements, setUnlockedAchievements] = useState<string[]>(() => 
     loadFromStorage(STORAGE_KEY.achievements, [])
@@ -135,6 +144,18 @@ function App() {
   useEffect(() => {
     saveToStorage('humantoken_darkmode', darkMode)
   }, [darkMode])
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEY.tasks, completedTasks)
+  }, [completedTasks])
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEY.subscription, subscription)
+  }, [subscription])
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEY.userName, userName)
+  }, [userName])
 
   useEffect(() => {
     const today = new Date().toDateString()
@@ -477,12 +498,21 @@ function App() {
               {isDead ? '😵 您已断网，请充值后说话' : '说话即付钱，AI经济学的人类版本'}
             </p>
           </div>
-          <button
-            onClick={() => setDarkMode(!darkMode)}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-800/50 hover:bg-gray-700/50 transition-all text-sm"
-          >
-            {darkMode ? '☀️ 亮色' : '🌙 暗黑'}
-          </button>
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={userName}
+              onChange={(e) => setUserName(e.target.value)}
+              placeholder="昵称"
+              className="px-2 py-1 rounded text-sm bg-gray-800 border border-gray-700 text-white placeholder-gray-500 w-24"
+            />
+            <button
+              onClick={() => setDarkMode(!darkMode)}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-800/50 hover:bg-gray-700/50 transition-all text-sm"
+            >
+              {darkMode ? '☀️ 亮色' : '🌙 暗黑'}
+            </button>
+          </div>
         </header>
 
         <div className={`rounded-xl p-4 mb-6 backdrop-blur ${
@@ -532,11 +562,35 @@ function App() {
             className="flex-1 bg-green-600/50 hover:bg-green-600/70 rounded-xl p-3 flex items-center justify-center gap-2 transition-all"
           >
             <span>🎯</span>
-            <span className="text-sm">今日挑战 ({completedChallenges.length}/{DAILY_CHALLENGES.length})</span>
+            <span className="text-sm">挑战 ({completedChallenges.length}/{DAILY_CHALLENGES.length})</span>
           </button>
         </div>
 
-        {showAchievements && (
+        <div className="flex gap-2 mb-6">
+          <button
+            onClick={() => setShowLeaderboard(!showLeaderboard)}
+            className="flex-1 bg-blue-600/50 hover:bg-blue-600/70 rounded-xl p-3 flex items-center justify-center gap-2 transition-all"
+          >
+            <span>🏅</span>
+            <span className="text-sm">排行榜</span>
+          </button>
+          <button
+            onClick={() => setShowTasks(!showTasks)}
+            className="flex-1 bg-purple-600/50 hover:bg-purple-600/70 rounded-xl p-3 flex items-center justify-center gap-2 transition-all"
+          >
+            <span>📋</span>
+            <span className="text-sm">任务</span>
+          </button>
+          <button
+            onClick={() => setShowSubscription(!showSubscription)}
+            className="flex-1 bg-red-600/50 hover:bg-red-600/70 rounded-xl p-3 flex items-center justify-center gap-2 transition-all"
+          >
+            <span>💎</span>
+            <span className="text-sm">会员</span>
+          </button>
+        </div>
+
+        {showLeaderboard && (
           <div className="bg-gray-800/50 rounded-xl p-4 mb-6 backdrop-blur">
             <h3 className="text-lg font-bold mb-3 flex items-center gap-2">
               🏆 成就系统
@@ -613,6 +667,121 @@ function App() {
                   </div>
                 )
               })}
+            </div>
+          </div>
+        )}
+
+        {showLeaderboard && (
+          <div className="bg-gray-800/50 rounded-xl p-4 mb-6 backdrop-blur">
+            <h3 className="text-lg font-bold mb-3 flex items-center gap-2">
+              🏅 排行榜
+            </h3>
+            <div className="space-y-2">
+              {MOCK_LEADERBOARD.map((entry, index) => (
+                <div key={entry.id} className="flex items-center justify-between p-3 rounded-lg bg-gray-700/30">
+                  <div className="flex items-center gap-3">
+                    <span className={`text-xl font-bold ${
+                      index === 0 ? 'text-yellow-400' : index === 1 ? 'text-gray-300' : index === 2 ? 'text-amber-600' : 'text-gray-500'
+                    }`}>
+                      {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
+                    </span>
+                    <div>
+                      <p className="font-medium">{entry.name}</p>
+                      <p className="text-xs text-gray-500">{entry.totalMessages} 条消息 | {entry.lastActive}</p>
+                    </div>
+                  </div>
+                  <p className="text-yellow-400 font-bold">¥{entry.totalSpent.toFixed(1)}</p>
+                </div>
+              ))}
+              <div className="mt-4 p-3 rounded-lg bg-purple-600/30 border border-purple-500">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">{userName} (你)</p>
+                    <p className="text-xs text-gray-400">{stats.totalSpent.toFixed(1)} 元 | {stats.messageCount} 条消息</p>
+                  </div>
+                  <p className="text-purple-400 font-bold">#?</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showTasks && (
+          <div className="bg-gray-800/50 rounded-xl p-4 mb-6 backdrop-blur">
+            <h3 className="text-lg font-bold mb-3 flex items-center gap-2">
+              📋 任务中心
+            </h3>
+            <div className="space-y-2">
+              {TASKS.map(task => {
+                const isCompleted = completedTasks.includes(task.id)
+                return (
+                  <div key={task.id} className={`p-3 rounded-lg ${isCompleted ? 'bg-green-600/30 border border-green-500' : 'bg-gray-700/30 border border-gray-600'}`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl">{task.icon}</span>
+                        <div>
+                          <p className="font-medium">{task.name}</p>
+                          <p className="text-xs text-gray-400">{task.description}</p>
+                        </div>
+                      </div>
+                      {isCompleted ? (
+                        <span className="text-green-400">✅</span>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setCompletedTasks(prev => [...prev, task.id])
+                            setStats(prev => ({ ...prev, balance: prev.balance + task.reward }))
+                            alert(`🎉 任务完成! 获得 ¥${task.reward}`)
+                          }}
+                          className="px-3 py-1 bg-purple-600 hover:bg-purple-500 rounded text-sm"
+                        >
+                          领取
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-xs text-yellow-400 mt-2">+¥{task.reward}</p>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {showSubscription && (
+          <div className="bg-gray-800/50 rounded-xl p-4 mb-6 backdrop-blur">
+            <h3 className="text-lg font-bold mb-3 flex items-center gap-2">
+              💎 会员中心
+            </h3>
+            <div className="grid gap-3">
+              {SUBSCRIPTIONS.map(sub => (
+                <div key={sub.tier} className={`p-4 rounded-lg ${subscription === sub.tier ? 'bg-purple-600/50 border-2 border-purple-500' : 'bg-gray-700/30 border border-gray-600'}`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl font-bold">{sub.name}</span>
+                      {subscription === sub.tier && <span className="text-xs bg-purple-500 px-2 py-0.5 rounded">当前</span>}
+                    </div>
+                    <p className="text-yellow-400 font-bold">¥{sub.price}/月</p>
+                  </div>
+                  <ul className="text-xs text-gray-400 space-y-1">
+                    {sub.features.map((f, i) => (
+                      <li key={i}>✓ {f}</li>
+                    ))}
+                  </ul>
+                  {subscription !== sub.tier && (
+                    <button
+                      onClick={() => {
+                        setSubscription(sub.tier)
+                        if (sub.tier === 'pro') setStats(prev => ({ ...prev, dailyLimit: 500 }))
+                        if (sub.tier === 'vip') setStats(prev => ({ ...prev, dailyLimit: 99999 }))
+                        alert(`🎉 已成为 ${sub.name}!`)
+                      }}
+                      className="w-full mt-3 py-2 bg-purple-600 hover:bg-purple-500 rounded text-sm font-medium"
+                    >
+                      开通
+                    </button>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
         )}
