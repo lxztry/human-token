@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HumanToken - 当人类说话也要收费</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #fff;
+        }
+        .container { max-width: 900px; margin: 0 auto; padding: 40px 20px; }
+        
+        .hero { text-align: center; padding: 60px 20px; }
+        .hero h1 { font-size: 3.5rem; margin-bottom: 16px; }
+        .hero h1 span { color: #ffd700; }
+        .hero .tagline { font-size: 1.3rem; opacity: 0.9; margin-bottom: 20px; }
+        .hero .quote { font-size: 1rem; opacity: 0.8; font-style: italic; max-width: 500px; margin: 0 auto; }
+        
+        .badge-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin: 30px 0; }
+        .badge { background: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 20px; font-size: 0.9rem; }
+        
+        .cta-row { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+        .btn { padding: 14px 32px; border-radius: 30px; text-decoration: none; font-weight: 600; transition: transform 0.2s; }
+        .btn:hover { transform: translateY(-2px); }
+        .btn-primary { background: #fff; color: #667eea; }
+        .btn-secondary { background: transparent; border: 2px solid #fff; color: #fff; }
+        
+        .concept { background: rgba(255,255,255,0.15); border-radius: 20px; padding: 40px; margin: 60px 0; text-align: center; }
+        .concept h2 { margin-bottom: 20px; }
+        .concept p { font-size: 1.1rem; line-height: 1.8; max-width: 600px; margin: 0 auto; }
+        
+        .rates { background: rgba(255,255,255,0.1); border-radius: 16px; padding: 30px; margin: 40px 0; }
+        .rates h2 { text-align: center; margin-bottom: 24px; }
+        .rates-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+        .rate-item { background: rgba(255,255,255,0.1); padding: 20px; border-radius: 12px; text-align: center; }
+        .rate-item .type { font-weight: 600; font-size: 1.1rem; margin-bottom: 8px; }
+        .rate-item .price { font-size: 1.5rem; color: #ffd700; }
+        
+        .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 24px; margin: 60px 0; }
+        .feature { background: rgba(255,255,255,0.1); border-radius: 16px; padding: 28px; }
+        .feature h3 { font-size: 1.1rem; margin-bottom: 10px; }
+        .feature p { opacity: 0.9; line-height: 1.6; font-size: 0.95rem; }
+        
+        .code-section { background: #1a1a2e; border-radius: 12px; padding: 24px; margin: 40px 0; overflow-x: auto; }
+        .code-section pre { font-family: 'Fira Code', Consolas, monospace; font-size: 0.9rem; color: #c9d1d9; line-height: 1.6; }
+        .code-section h3 { color: #ffd700; margin-bottom: 16px; }
+        .keyword { color: #ff7b72; }
+        .string { color: #a5d6ff; }
+        .comment { color: #8b949e; }
+        
+        .warning { background: rgba(255, 215, 0, 0.2); border: 2px solid #ffd700; border-radius: 12px; padding: 20px; margin: 40px 0; text-align: center; }
+        .warning .icon { font-size: 2rem; margin-bottom: 10px; }
+        
+        footer { text-align: center; padding: 40px; color: rgba(255,255,255,0.7); border-top: 1px solid rgba(255,255,255,0.2); margin-top: 60px; }
+        footer a { color: #fff; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <section class="hero">
+            <h1>🌐💰 <span>HumanToken</span></h1>
+            <p class="tagline">"当AI用Token收费时，人类也该觉悟了"</p>
+            <p class="quote">受黄仁勋GTC 2026大会Token经济学启发 — AI靠Token收费，凭什么人类说话免费？</p>
+            
+            <div class="badge-row">
+                <span class="badge">🔥 讽刺性概念项目</span>
+                <span class="badge">😄 欢乐整蛊工具</span>
+                <span class="badge">💡 AI经济学思考</span>
+            </div>
+            
+            <div class="cta-row">
+                <a href="https://github.com/lxztry/human-token" class="btn btn-primary">⭐ Star on GitHub</a>
+                <a href="https://github.com/lxztry/human-token#快速开始" class="btn btn-secondary">🚀 快速开始</a>
+            </div>
+        </section>
+        
+        <section class="concept">
+            <h2>💭 灵魂拷问</h2>
+            <p>AI 靠 Token 收费，人类说话凭什么免费？<br><br>
+            HumanToken 将 AI 的 Token 计费模式完美复刻到人类身上 — 每次说话都是一次 API 调用，余额不足就"断网"（说不出话）</p>
+        </section>
+        
+        <section class="rates">
+            <h2>💵 话语定价 API</h2>
+            <div class="rates-grid">
+                <div class="rate-item">
+                    <div class="type">废话文学</div>
+                    <div class="price">¥0.001</div>
+                </div>
+                <div class="rate-item">
+                    <div class="type">普通对话</div>
+                    <div class="price">¥0.01</div>
+                </div>
+                <div class="rate-item">
+                    <div class="type">深度思考</div>
+                    <div class="price">¥0.1</div>
+                </div>
+                <div class="rate-item">
+                    <div class="type">情绪价值</div>
+                    <div class="price">¥0.5</div>
+                </div>
+                <div class="rate-item">
+                    <div class="type">老板发言</div>
+                    <div class="price">免费!</div>
+                </div>
+            </div>
+        </section>
+        
+        <section class="features">
+            <div class="feature">
+                <h3>🗣️ 说话扣费系统</h3>
+                <p>每日初始话语额度，每次说话按字数/时长实时扣费</p>
+            </div>
+            <div class="feature">
+                <h3>⚠️ 余额耗尽</h3>
+                <p>余额耗尽时界面变灰，出现"网络波动"提示 🙀</p>
+            </div>
+            <div class="feature">
+                <h3>📊 仪表盘</h3>
+                <p>今日已说话字数/花费、余额告急预警、月度报表</p>
+            </div>
+            <div class="feature">
+                <h3>🔥 排行榜</h3>
+                <p>"最败家的一句话"排行榜，看看谁最能说</p>
+            </div>
+        </section>
+        
+        <section class="code-section">
+            <h3>💻 费率配置</h3>
+<pre><span class="keyword">const</span> RATES = {
+  <span class="string">"废话文学"</span>: <span class="string">0.001</span>,      <span class="comment">// 如"啊这个那个嗯"</span>
+  <span class="string">"普通对话"</span>: <span class="string">0.01</span>,       <span class="comment">// 日常聊天</span>
+  <span class="string">"深度思考"</span>: <span class="string">0.1</span>,        <span class="comment">// 讨论问题/解决问题</span>
+  <span class="string">"情绪价值"</span>: <span class="string">0.5</span>,        <span class="comment">// 安慰、鼓励、倾听</span>
+  <span class="string">"老板发言"</span>: <span class="string">0</span>,          <span class="comment">// 免费！（潜规则）</span>
+}</pre>
+        </section>
+        
+        <section class="features">
+            <div class="feature">
+                <h3>👥 差异化收费</h3>
+                <p>程序员+50%（技术术语附加费）、销售+30%、产品经理+100%（改需求费用）</p>
+            </div>
+            <div class="feature">
+                <h3>🔧 技术栈</h3>
+                <p>React 18 + TypeScript + Vite + TailwindCSS + Node.js + Express</p>
+            </div>
+        </section>
+        
+        <section class="warning">
+            <div class="icon">⚠️</div>
+            <h3>这是一个讽刺性概念项目</h3>
+            <p>旨在引发关于AI经济学的思考，同时给你带来欢乐 😄</p>
+        </section>
+        
+        <section class="code-section">
+            <h3>🚀 快速开始</h3>
+<pre><span class="comment"># 克隆项目</span>
+git clone https://github.com/lxztry/human-token.git
+<span class="keyword">cd</span> human-token
+
+<span class="comment"># 安装依赖</span>
+<span class="keyword">cd</span> client && npm install
+<span class="keyword">cd</span> ../server && npm install
+
+<span class="comment"># 启动</span>
+<span class="keyword">cd</span> server && npm run dev
+<span class="comment"># 新终端</span>
+<span class="keyword">cd</span> ../client && npm run dev
+
+<span class="comment"># 访问 http://localhost:5173</span></pre>
+        </section>
+        
+        <footer>
+            <p>🌐💰 HumanToken by <a href="https://github.com/lxztry">@lxztry</a></p>
+            <p style="margin-top: 10px;"><a href="https://github.com/lxztry/human-token">GitHub</a> · MIT License</p>
+        </footer>
+    </div>
+</body>
+</html>
