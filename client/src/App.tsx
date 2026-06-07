@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { detectContentType, RATE_CONFIG, DEFAULT_BALANCE, DAILY_LIMIT, DEFAULT_ROLE_MULTIPLIERS, DEFAULT_ROLE_LABELS, DAILY_CHALLENGES, ACHIEVEMENTS, getSarcasmComment, type ContentType, MOCK_LEADERBOARD, TASKS, SUBSCRIPTIONS } from '@shared/config'
+import { playSound } from './sounds'
 
 interface Message {
   id: number
@@ -90,6 +91,9 @@ function App() {
   const [completedTasks, setCompletedTasks] = useState<string[]>(() => loadFromStorage(STORAGE_KEY.tasks, []))
   const [subscription, setSubscription] = useState<string>(() => loadFromStorage(STORAGE_KEY.subscription, 'free'))
   const [userName, setUserName] = useState(() => loadFromStorage(STORAGE_KEY.userName, '匿名用户'))
+  const [soundEnabled, setSoundEnabled] = useState(() => loadFromStorage('humantoken_sound', true))
+  const [balanceAnimKey, setBalanceAnimKey] = useState(0)
+  const prevBalanceRef = useRef(stats.balance)
 
   const [unlockedAchievements, setUnlockedAchievements] = useState<string[]>(() => 
     loadFromStorage(STORAGE_KEY.achievements, [])
@@ -158,6 +162,18 @@ function App() {
   }, [userName])
 
   useEffect(() => {
+    saveToStorage('humantoken_sound', soundEnabled)
+  }, [soundEnabled])
+
+  // Balance change animation trigger
+  useEffect(() => {
+    if (prevBalanceRef.current !== stats.balance) {
+      setBalanceAnimKey(k => k + 1)
+      prevBalanceRef.current = stats.balance
+    }
+  }, [stats.balance])
+
+  useEffect(() => {
     const today = new Date().toDateString()
     if (dailyStats.date !== today) {
       setDailyStats({
@@ -217,6 +233,7 @@ function App() {
 
     if (newUnlocked.length > 0) {
       setUnlockedAchievements(prev => [...prev, ...newUnlocked])
+      if (soundEnabled) playSound('achievement')
       setTimeout(() => {
         alert(`🏆 成就解锁: ${newUnlocked.map(id => ACHIEVEMENTS.find(a => a.id === id)?.name).join(', ')}`)
       }, 1000)
@@ -259,6 +276,7 @@ function App() {
       const totalReward = newRewards.reduce((a, b) => a + b, 0)
       setCompletedChallenges(prev => [...prev, ...newCompleted])
       setStats(prev => ({ ...prev, balance: prev.balance + totalReward }))
+      if (soundEnabled) playSound('challenge')
       setTimeout(() => {
         alert(`🎯 挑战完成! 获得 ¥${totalReward} 奖励!`)
       }, 1000)
@@ -311,6 +329,7 @@ function App() {
       const data = await response.json()
 
       if (!data.success) {
+        if (soundEnabled) playSound('death')
         setIsDead(true)
         setMessages(prev => [...prev, {
           id: Date.now(),
@@ -331,6 +350,13 @@ function App() {
         totalSpent: prev.totalSpent + data.cost,
         messageCount: prev.messageCount + 1
       }))
+      if (soundEnabled) {
+        if (data.newBalance < 20) {
+          playSound('warning')
+        } else {
+          playSound('deduct')
+        }
+      }
 
       const contentType = detectContentType(text)
       setMessages(prev => [...prev, {
@@ -480,12 +506,12 @@ function App() {
 
   return (
     <div className={`min-h-screen transition-colors duration-300 ${
-      darkMode 
-        ? isDead 
-          ? 'bg-gray-950' 
+      darkMode
+        ? isDead
+          ? 'bg-gray-950'
           : 'dark bg-gray-900'
-        : isDead 
-          ? 'bg-gradient-to-br from-red-900 via-gray-900 to-black'
+        : isDead
+          ? 'bg-gradient-to-br from-red-900 via-gray-900 to-black death-shake'
           : 'bg-gradient-to-br from-purple-900 via-indigo-900 to-black'
     } text-white p-4 sm:p-6`}>
       <div className="max-w-2xl mx-auto">
@@ -507,6 +533,13 @@ function App() {
               className="px-2 py-1 rounded text-sm bg-gray-800 border border-gray-700 text-white placeholder-gray-500 w-24"
             />
             <button
+              onClick={() => { setSoundEnabled(!soundEnabled); if (!soundEnabled) playSound('click') }}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-800/50 hover:bg-gray-700/50 transition-all text-sm"
+              title={soundEnabled ?'🔊 音效开启' : '🔇 音效关闭'}
+            >
+              {soundEnabled ? '🔊' : '🔇'}
+            </button>
+            <button
               onClick={() => setDarkMode(!darkMode)}
               className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-800/50 hover:bg-gray-700/50 transition-all text-sm"
             >
@@ -527,7 +560,7 @@ function App() {
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
             <div>
               <p className="text-gray-400 text-xs">当前余额</p>
-              <p className={`text-3xl font-bold ${isDead ? 'text-red-500' : stats.balance < 20 ? 'text-red-500' : 'text-green-400'}`}>
+              <p className={`text-3xl font-bold ${isDead ? 'text-red-500' : stats.balance < 20 ? 'text-red-500' : 'text-green-400'} balance-flash`} key={`bal-${balanceAnimKey}`}>
                 ¥{stats.balance.toFixed(2)}
               </p>
             </div>
@@ -874,10 +907,10 @@ function App() {
 
         <div className="space-y-4 mb-6 max-h-80 sm:max-h-96 overflow-y-auto">
           {messages.map(msg => (
-            <div key={msg.id} className={`flex ${msg.type === 'sent' ? 'justify-end' : 'justify-start'}`}>
+            <div key={msg.id} className={`flex ${msg.type === 'sent' ? 'justify-end' : 'justify-start'} ${msg.type === 'sent' ? 'msg-sent' : 'msg-received'}`}>
               <div className={`max-w-[85%] sm:max-w-[80%] p-3 rounded-xl ${
-                msg.type === 'sent' 
-                  ? darkMode ? 'bg-purple-700' : 'bg-purple-600 text-white' 
+                msg.type === 'sent'
+                  ? darkMode ? 'bg-purple-700' : 'bg-purple-600 text-white'
                   : darkMode ? 'bg-gray-700' : 'bg-gray-700 text-gray-200'
               }`}>
                 <p className="break-words">{msg.content}</p>
