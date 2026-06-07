@@ -1,0 +1,20 @@
+{
+  "name": "HumanToken",
+  "short_name": "HumanToken",
+  "description": "人类话语的价值衡量工具 — AI时代的Token经济学实践",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a1a",
+  "theme_color": "#6366f1",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["entertainment", "productivity"],
+  "lang": "zh-CN"
+}
