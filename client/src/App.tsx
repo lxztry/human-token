@@ -78,6 +78,21 @@ function App() {
   const [estimatedCost, setEstimatedCost] = useState(0)
   const [detectedType, setDetectedType] = useState<ContentType>('default')
   const [isLoading, setIsLoading] = useState(false)
+  const [showAuth, setShowAuth] = useState(false)
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login')
+  const [authUsername, setAuthUsername] = useState('')
+  const [authPassword, setAuthPassword] = useState('')
+  const [authDisplayName, setAuthDisplayName] = useState('')
+  const [authError, setAuthError] = useState('')
+  const [authLoading, setAuthLoading] = useState(false)
+  const [token, setToken] = useState<string | null>(() => localStorage.getItem('humantoken_token'))
+  const [userId, setUserId] = useState<number | null>(() => {
+    const t = localStorage.getItem('humantoken_token')
+    return t ? parseInt(localStorage.getItem('humantoken_userid') || '0') : null
+  })
+  const [userRank, setUserRank] = useState<number | null>(null)
+  const [leaderboard, setLeaderboard] = useState<any[]>([])
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false)
   const [showRoleEditor, setShowRoleEditor] = useState(false)
   const [editingRole, setEditingRole] = useState<CustomRole | null>(null)
   const [newRoleLabel, setNewRoleLabel] = useState('')
@@ -172,6 +187,88 @@ function App() {
       prevBalanceRef.current = stats.balance
     }
   }, [stats.balance])
+
+  // Fetch real leaderboard when showing
+  const fetchLeaderboard = useCallback(async () => {
+    setLeaderboardLoading(true)
+    try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (token) headers['Authorization'] = `Bearer ${token}`
+
+      const resp = await fetch(`${API_BASE}/leaderboard?limit=20`, { headers })
+      if (resp.ok) {
+        const data = await resp.json()
+        setLeaderboard(data)
+        // Fetch my rank
+        if (token) {
+          const rankResp = await fetch(`${API_BASE}/leaderboard/me`, { headers })
+          if (rankResp.ok) {
+            const rankData = await rankResp.json()
+            setUserRank(rankData.rank)
+          }
+        }
+      }
+    } catch {
+      // Offline — use mock
+      setLeaderboard(MOCK_LEADERBOARD.map((e, i) => ({ ...e, rank: i + 1 })))
+    }
+    setLeaderboardLoading(false)
+  }, [token])
+
+  useEffect(() => {
+    if (showLeaderboard) fetchLeaderboard()
+  }, [showLeaderboard, token])
+
+  // Auth handlers
+  const handleAuth = async () => {
+    setAuthError('')
+    setAuthLoading(true)
+    try {
+      const endpoint = authMode === 'login' ? '/api/auth/login' : '/api/auth/register'
+      const body: Record<string, string> = { username: authUsername, password: authPassword }
+      if (authMode === 'register') body.displayName = authDisplayName || authUsername
+
+      const resp = await fetch(`${API_BASE}${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      })
+      const data = await resp.json()
+
+      if (!resp.ok) {
+        setAuthError(data.error || 'Auth failed')
+        return
+      }
+
+      localStorage.setItem('humantoken_token', data.token)
+      localStorage.setItem('humantoken_userid', String(data.user.id))
+      setToken(data.token)
+      setUserId(data.user.id)
+      setStats(prev => ({ ...prev, balance: data.user.balance }))
+      setShowAuth(false)
+      setAuthUsername('')
+      setAuthPassword('')
+      setAuthDisplayName('')
+    } catch {
+      setAuthError('Network error — check server')
+    }
+    setAuthLoading(false)
+  }
+
+  const handleLogout = () => {
+    localStorage.removeItem('humantoken_token')
+    localStorage.removeItem('humantoken_userid')
+    setToken(null)
+    setUserId(null)
+    setUserRank(null)
+  }
+
+  // Get auth headers
+  const authHeaders = (): Record<string, string> => {
+    const h: Record<string, string> = { 'Content-Type': 'application/json' }
+    if (token) h['Authorization'] = `Bearer ${token}`
+    return h
+  }
 
   useEffect(() => {
     const today = new Date().toDateString()
@@ -315,146 +412,144 @@ function App() {
 
   const sendMessage = async () => {
     if (!input.trim() || isDead || isLoading) return
-    
+
     setIsLoading(true)
     const text = input
     const multiplier = getMultiplier(role)
 
-    try {
-      const response = await fetch(`${API_BASE}/deduct`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, role, currentBalance: stats.balance, customRoles }),
-      })
-      const data = await response.json()
+    // Always try API first (works for both logged-in and guest)
+    if (token) {
+      try {
+        const response = await fetch(`${API_BASE}/deduct`, {
+          method: 'POST',
+          headers: authHeaders(),
+          body: JSON.stringify({ text, role, currentBalance: stats.balance }),
+        })
+        const data = await response.json()
 
-      if (!data.success) {
-        if (soundEnabled) playSound('death')
-        setIsDead(true)
-        setMessages(prev => [...prev, {
-          id: Date.now(),
-          content: '⚠️ 余额不足，已断网！',
-          cost: 0,
-          timestamp: new Date().toISOString(),
-          type: 'received',
-          contentType: 'default'
-        }])
-        setInput('')
-        setIsLoading(false)
-        return
-      }
-
-      setStats(prev => ({
-        ...prev,
-        balance: data.newBalance,
-        totalSpent: prev.totalSpent + data.cost,
-        messageCount: prev.messageCount + 1
-      }))
-      if (soundEnabled) {
-        if (data.newBalance < 20) {
-          playSound('warning')
-        } else {
-          playSound('deduct')
+        if (!data.success) {
+          if (soundEnabled) playSound('death')
+          setIsDead(true)
+          setMessages(prev => [...prev, {
+            id: Date.now(),
+            content: '⚠️ 余额不足，已断网！',
+            cost: 0,
+            timestamp: new Date().toISOString(),
+            type: 'received',
+            contentType: 'default'
+          }])
+          setInput('')
+          setIsLoading(false)
+          return
         }
-      }
 
-      const contentType = detectContentType(text)
-      setMessages(prev => [...prev, {
-        id: Date.now(),
-        content: text,
-        cost: data.cost,
-        timestamp: new Date().toISOString(),
-        type: 'sent',
-        contentType
-      }])
+        setStats(prev => ({
+          ...prev,
+          balance: data.newBalance,
+          totalSpent: prev.totalSpent + data.cost,
+          messageCount: prev.messageCount + 1
+        }))
 
-      setDailyStats(prev => ({
-        ...prev,
-        messages: prev.messages + 1,
-        spent: prev.spent + data.cost,
-        deep: contentType === 'deep' ? prev.deep + 1 : prev.deep,
-        nonsense: contentType === 'nonsense' ? prev.nonsense + 1 : prev.nonsense,
-        emotional: contentType === 'emotional' ? prev.emotional + 1 : prev.emotional,
-      }))
-
-      checkAchievements(contentType, data.cost)
-      checkChallenges(contentType, data.cost)
-
-      const sarcasmComment = getSarcasmComment(contentType)
-      
-      setTimeout(() => {
-        setMessages(prev => [...prev, {
-          id: Date.now() + 1,
-          content: sarcasmComment,
-          cost: 0,
-          timestamp: new Date().toISOString(),
-          type: 'received',
-          contentType: 'default'
-        }])
-      }, 500)
-
-    } catch (error) {
-      console.error('API Error:', error)
-      const type = detectContentType(text)
-      const baseCost = text.length * (RATE_CONFIG[type] || RATE_CONFIG.default)
-      const cost = baseCost * multiplier
-
-      if (cost > stats.balance) {
-        setIsDead(true)
+        const contentType = detectContentType(text)
         setMessages(prev => [...prev, {
           id: Date.now(),
-          content: '⚠️ 余额不足，已断网！',
-          cost: 0,
+          content: text,
+          cost: data.cost,
           timestamp: new Date().toISOString(),
-          type: 'received',
-          contentType: 'default'
+          type: 'sent',
+          contentType
         }])
+
+        if (soundEnabled) {
+          if (data.newBalance < 20) playSound('warning')
+          else playSound('deduct')
+        }
+
+        const sarcasmComment = getSarcasmComment(contentType)
+        setTimeout(() => {
+          setMessages(prev => [...prev, {
+            id: Date.now() + 1,
+            content: sarcasmComment,
+            cost: 0,
+            timestamp: new Date().toISOString(),
+            type: 'received',
+            contentType: 'default'
+          }])
+        }, 500)
+
         setInput('')
         setIsLoading(false)
         return
+      } catch {
+        // Fall through to offline calculation
       }
+    }
 
-      setStats(prev => ({
-        ...prev,
-        balance: prev.balance - cost,
-        totalSpent: prev.totalSpent + cost,
-        messageCount: prev.messageCount + 1
-      }))
+    // Offline/local mode
+    const type = detectContentType(text)
+    const baseCost = text.length * (RATE_CONFIG[type] || RATE_CONFIG.default)
+    const cost = baseCost * multiplier
 
+    if (cost > stats.balance) {
+      if (soundEnabled) playSound('death')
+      setIsDead(true)
       setMessages(prev => [...prev, {
         id: Date.now(),
-        content: text,
-        cost,
+        content: '⚠️ 余额不足，已断网！',
+        cost: 0,
         timestamp: new Date().toISOString(),
-        type: 'sent',
-        contentType: type
+        type: 'received',
+        contentType: 'default'
       }])
-
-      setDailyStats(prev => ({
-        ...prev,
-        messages: prev.messages + 1,
-        spent: prev.spent + cost,
-        deep: type === 'deep' ? prev.deep + 1 : prev.deep,
-        nonsense: type === 'nonsense' ? prev.nonsense + 1 : prev.nonsense,
-        emotional: type === 'emotional' ? prev.emotional + 1 : prev.emotional,
-      }))
-
-      checkAchievements(type, cost)
-      checkChallenges(type, cost)
-
-      const sarcasmComment = getSarcasmComment(type)
-
-      setTimeout(() => {
-        setMessages(prev => [...prev, {
-          id: Date.now() + 1,
-          content: sarcasmComment + ' (离线模式)',
-          cost: 0,
-          timestamp: new Date().toISOString(),
-          type: 'received',
-          contentType: 'default'
-        }])
-      }, 500)
+      setInput('')
+      setIsLoading(false)
+      return
     }
+
+    setStats(prev => ({
+      ...prev,
+      balance: prev.balance - cost,
+      totalSpent: prev.totalSpent + cost,
+      messageCount: prev.messageCount + 1
+    }))
+
+    if (soundEnabled) {
+      if (stats.balance - cost < 20) playSound('warning')
+      else playSound('deduct')
+    }
+
+    setMessages(prev => [...prev, {
+      id: Date.now(),
+      content: text,
+      cost,
+      timestamp: new Date().toISOString(),
+      type: 'sent',
+      contentType: type
+    }])
+
+    setDailyStats(prev => ({
+      ...prev,
+      messages: prev.messages + 1,
+      spent: prev.spent + cost,
+      deep: type === 'deep' ? prev.deep + 1 : prev.deep,
+      nonsense: type === 'nonsense' ? prev.nonsense + 1 : prev.nonsense,
+      emotional: type === 'emotional' ? prev.emotional + 1 : prev.emotional,
+    }))
+
+    checkAchievements(type, cost)
+    checkChallenges(type, cost)
+
+    const sarcasmComment = getSarcasmComment(type)
+    setTimeout(() => {
+      setMessages(prev => [...prev, {
+        id: Date.now() + 1,
+        content: sarcasmComment + (token ? '' : ' (离线模式)'),
+        cost: 0,
+        timestamp: new Date().toISOString(),
+        type: 'received',
+        contentType: 'default'
+      }])
+    }, 500)
 
     setInput('')
     setIsLoading(false)
@@ -514,7 +609,72 @@ function App() {
           ? 'bg-gradient-to-br from-red-900 via-gray-900 to-black death-shake'
           : 'bg-gradient-to-br from-purple-900 via-indigo-900 to-black'
     } text-white p-4 sm:p-6`}>
-      <div className="max-w-2xl mx-auto">
+
+    {/* Auth Modal */}
+    {showAuth && (
+      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="bg-gray-800 border border-gray-700 rounded-2xl p-6 w-full max-w-sm">
+          <h2 className="text-xl font-bold mb-4 text-center">
+            {authMode === 'login' ? '登录 HumanToken' : '注册 HumanToken'}
+          </h2>
+          {authError && (
+            <div className="mb-4 p-3 bg-red-600/20 border border-red-500/30 rounded-lg text-red-400 text-sm">
+              {authError}
+            </div>
+          )}
+          <div className="space-y-3">
+            <input
+              type="text"
+              value={authUsername}
+              onChange={(e) => setAuthUsername(e.target.value)}
+              placeholder="用户名"
+              className="w-full px-4 py-2.5 rounded-lg bg-gray-900 border border-gray-700 text-white placeholder-gray-500 focus:border-purple-500 outline-none"
+            />
+            {authMode === 'register' && (
+              <input
+                type="text"
+                value={authDisplayName}
+                onChange={(e) => setAuthDisplayName(e.target.value)}
+                placeholder="显示名称（可选）"
+                className="w-full px-4 py-2.5 rounded-lg bg-gray-900 border border-gray-700 text-white placeholder-gray-500 focus:border-purple-500 outline-none"
+              />
+            )}
+            <input
+              type="password"
+              value={authPassword}
+              onChange={(e) => setAuthPassword(e.target.value)}
+              placeholder="密码"
+              onKeyPress={(e) => e.key === 'Enter' && handleAuth()}
+              className="w-full px-4 py-2.5 rounded-lg bg-gray-900 border border-gray-700 text-white placeholder-gray-500 focus:border-purple-500 outline-none"
+            />
+            <button
+              onClick={handleAuth}
+              disabled={authLoading}
+              className="w-full py-2.5 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 rounded-lg font-semibold transition-all"
+            >
+              {authLoading ? '处理中...' : authMode === 'login' ? '登录' : '注册'}
+            </button>
+          </div>
+          <div className="mt-4 text-center">
+            <button
+              onClick={() => { setAuthMode(authMode === 'login' ? 'register' : 'login'); setAuthError('') }}
+              className="text-sm text-purple-400 hover:text-purple-300"
+            >
+              {authMode === 'login' ? '没有账号？去注册' : '已有账号？去登录'}
+            </button>
+          </div>
+          <button
+            onClick={() => setShowAuth(false)}
+            className="mt-3 w-full text-center text-gray-500 hover:text-gray-400 text-sm"
+          >
+            取消
+          </button>
+        </div>
+      </div>
+    )}
+
+    {/* Main App */}
+    <div className="max-w-2xl mx-auto">
         <header className="flex flex-col sm:flex-row justify-between items-center mb-6 sm:mb-8 gap-4">
           <div className="text-center sm:text-left">
             <h1 className="text-3xl sm:text-4xl font-bold mb-2 bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 bg-clip-text text-transparent">
@@ -706,12 +866,17 @@ function App() {
 
         {showLeaderboard && (
           <div className="bg-gray-800/50 rounded-xl p-4 mb-6 backdrop-blur">
-            <h3 className="text-lg font-bold mb-3 flex items-center gap-2">
-              🏅 排行榜
-            </h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-bold flex items-center gap-2">🏅 排行榜</h3>
+              {userRank && <span className="text-sm text-purple-400">你的排名: #{userRank}</span>}
+            </div>
             <div className="space-y-2">
-              {MOCK_LEADERBOARD.map((entry, index) => (
-                <div key={entry.id} className="flex items-center justify-between p-3 rounded-lg bg-gray-700/30">
+              {leaderboardLoading ? (
+                <p className="text-center text-gray-500 py-4">加载中...</p>
+              ) : leaderboard.length === 0 ? (
+                <p className="text-center text-gray-500 py-4">暂无数据</p>
+              ) : leaderboard.map((entry, index) => (
+                <div key={entry.id} className={`flex items-center justify-between p-3 rounded-lg ${entry.id === userId ? 'bg-purple-600/30 border border-purple-500' : 'bg-gray-700/30'}`}>
                   <div className="flex items-center gap-3">
                     <span className={`text-xl font-bold ${
                       index === 0 ? 'text-yellow-400' : index === 1 ? 'text-gray-300' : index === 2 ? 'text-amber-600' : 'text-gray-500'
@@ -719,22 +884,13 @@ function App() {
                       {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
                     </span>
                     <div>
-                      <p className="font-medium">{entry.name}</p>
-                      <p className="text-xs text-gray-500">{entry.totalMessages} 条消息 | {entry.lastActive}</p>
+                      <p className="font-medium">{entry.displayName || entry.username}</p>
+                      <p className="text-xs text-gray-500">{entry.messageCount} 条消息</p>
                     </div>
                   </div>
                   <p className="text-yellow-400 font-bold">¥{entry.totalSpent.toFixed(1)}</p>
                 </div>
               ))}
-              <div className="mt-4 p-3 rounded-lg bg-purple-600/30 border border-purple-500">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">{userName} (你)</p>
-                    <p className="text-xs text-gray-400">{stats.totalSpent.toFixed(1)} 元 | {stats.messageCount} 条消息</p>
-                  </div>
-                  <p className="text-purple-400 font-bold">#?</p>
-                </div>
-              </div>
             </div>
           </div>
         )}
